@@ -12,6 +12,7 @@ type (
 		windows []*Window
 
 		isLeftMouseDown bool
+		previousMouseLocation Rect
 	}
 )
 
@@ -23,10 +24,16 @@ func NewWindowManager(screen tcell.Screen) *WindowManager {
 	return wm
 }
 
-func (this *WindowManager) CreateWindow() {
+func (this *WindowManager) CreateWindow() *Window {
+	for _, w := range this.windows {
+		w.Active(false)
+	}
+
 	w := NewWindow(this.screen)
-	this.windows = append(this.windows, w)
+	this.windows = append([]*Window{w}, this.windows...)
 	w.Open(true)
+
+	return w
 }
 
 func (this *WindowManager) CloseWindow() {
@@ -34,24 +41,43 @@ func (this *WindowManager) CloseWindow() {
 }
 
 func (this *WindowManager) ForceRender() {
-	for _, w := range this.windows {
-		w.ForceRender()
+	this.screen.Clear()
+	for i := len(this.windows) - 1; i >= 0; i-- {
+		this.windows[i].ForceRender()
 	}
 }
 
 func (this *WindowManager) OnLeftMouseDown(x int, y int) {
-	this.isLeftMouseDown = true
-	this.changeActiveWindow(x, y)
+	if !this.isLeftMouseDown {
+		this.changeActiveWindow(x, y)
+		this.previousMouseLocation.X = x
+		this.previousMouseLocation.Y = y
+		this.isLeftMouseDown = true
+	}
 }
 
 func (this *WindowManager) OnMouseMove(x int, y int) {
 	if this.isLeftMouseDown {
+		dx := x - this.previousMouseLocation.X
+		dy := y - this.previousMouseLocation.Y
 
+		w := this.activeWindow()
+		if w != nil {
+			if w.IsClickTitleBar(this.previousMouseLocation.X, this.previousMouseLocation.Y) {
+				w.Move(dx, dy)
+			}
+			this.ForceRender()
+		}
+
+		this.previousMouseLocation.X = x
+		this.previousMouseLocation.Y = y
 	}
 }
 
-func (this *WindowManager) OnLeftMouseUp(x int, y int) {
+func (this *WindowManager) OnLeftMouseUp() {
 	this.isLeftMouseDown = false
+	this.previousMouseLocation.X = -1
+	this.previousMouseLocation.Y = -1
 }
 
 func (this *WindowManager) changeActiveWindow(x int, y int) bool {
@@ -61,12 +87,12 @@ func (this *WindowManager) changeActiveWindow(x int, y int) bool {
 	for i, w := range this.windows {
 		if w.TryClick(x, y) {
 			if i == 0 {
-				newWindows[i] = w
-			} else {
-				changed = true
-				newWindows, newWindows[0] = append(newWindows[0:1], newWindows[0:i]...), w
-				newWindows = append(newWindows, this.windows[i:]...)
+				newWindows = this.windows
+				break
 			}
+			changed = true
+			newWindows = append([]*Window{w}, newWindows[0:i]...)
+			newWindows = append(newWindows, this.windows[i+1:]...)
 			w.Active(true)
 			break
 		} else {
@@ -74,7 +100,7 @@ func (this *WindowManager) changeActiveWindow(x int, y int) bool {
 		}
 	}
 	this.windows = newWindows
-
+	this.ForceRender()
 	return changed
 }
 
