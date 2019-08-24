@@ -24,6 +24,12 @@ func NewWindowManager(screen tcell.Screen) *WindowManager {
 	return wm
 }
 
+func (this *WindowManager) Dispose() {
+	for _, w := range this.windows {
+		w.Close()
+	}
+}
+
 func (this *WindowManager) CreateWindow() *Window {
 	for _, w := range this.windows {
 		w.Active(false)

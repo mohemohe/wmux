@@ -26,6 +26,7 @@ type (
 		resizable bool
 		origin Rect
 		size Rect
+		cmd *exec.Cmd
 		vt *vterm.VTerm
 		pty *os.File
 		request RequestCallback
@@ -64,6 +65,11 @@ func NewWindow(screen tcell.Screen, request RequestCallback) *Window {
 	}
 
 	c := exec.Command(shell, "--login") // NOTE: ログインシェルの引数くらい実装しててくれ頼む
+	if c == nil {
+		_, _ = w.vt.Write([]byte("\033[31mshell error\033[0m"))
+		_ = w.vt.ObtainScreen().Flush() // NOTE: これいるん？
+		return w
+	}
 	ptmx, err := pty.Start(c)
 	if err != nil {
 		_, _ = w.vt.Write([]byte("\033[31mTTY error\033[0m"))
@@ -110,6 +116,10 @@ func (this *Window) Close() {
 
 	if this.pty != nil {
 		_ = this.pty.Close()
+	}
+
+	if this.cmd != nil {
+		_ = this.cmd.Process.Kill()
 	}
 }
 

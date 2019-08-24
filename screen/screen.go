@@ -55,6 +55,7 @@ func Start() {
 			if ev.Key() == tcell.KeyEscape {
 				ecnt++
 				if ecnt > 1 {
+					wm.Dispose()
 					screen.Fini()
 					os.Exit(0)
 				}
