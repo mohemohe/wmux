@@ -86,8 +86,12 @@ func (this *WindowManager) OnLeftMouseUp() {
 func (this *WindowManager) OnKeyDown(key *tcell.EventKey) {
 	w := this.activeWindow()
 	if w != nil {
-		b := []byte(string(key.Rune()))
-		w.Input(b)
+		if key.Key() == tcell.KeyRune {
+			b := []byte(string(key.Rune()))
+			w.Input(b)
+		} else {
+			// TODO: #9
+		}
 	}
 }
 
