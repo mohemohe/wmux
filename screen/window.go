@@ -28,7 +28,10 @@ type (
 		size Rect
 		vt *vterm.VTerm
 		pty *os.File
-		requestRender func()
+		request RequestCallback
+	}
+	RequestCallback struct {
+		render func()
 	}
 )
 
@@ -38,7 +41,7 @@ var (
 	bodyStyle = tcell.StyleDefault.Background(tcell.ColorWhite).Foreground(tcell.ColorBlack).Bold(false)
 )
 
-func NewWindow(screen tcell.Screen, requestRender func()) *Window {
+func NewWindow(screen tcell.Screen, request RequestCallback) *Window {
 	w := &Window{
 		screen: screen,
 		title: "うんこ",
@@ -48,7 +51,7 @@ func NewWindow(screen tcell.Screen, requestRender func()) *Window {
 		origin: Rect{0, 0},
 		size: Rect{80, 24},
 		vt: vterm.New(23, 80),
-		requestRender: requestRender,
+		request: request,
 	}
 	w.vt.SetUTF8(true)
 	w.vt.ObtainScreen().Reset(true)
@@ -94,7 +97,7 @@ func (this *Window) Open(isOpen bool) {
 			}
 			_, err = this.vt.Write(buff)
 			this.vt.ObtainScreen().Flush()
-			this.requestRender()
+			this.request.render()
 		}
 	}()
 
