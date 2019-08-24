@@ -5,6 +5,7 @@ import (
 	"github.com/gdamore/tcell"
 	"github.com/mattn/go-libvterm"
 	"github.com/mattn/go-runewidth"
+	"github.com/riywo/loginshell"
 	"io"
 	"os"
 	"os/exec"
@@ -52,15 +53,21 @@ func NewWindow(screen tcell.Screen, requestRender func()) *Window {
 	w.vt.SetUTF8(true)
 	w.vt.ObtainScreen().Reset(true)
 
-	c := exec.Command("zsh", "-l")
+	shell, err := loginshell.Shell()
+	if err != nil {
+		_, _ = w.vt.Write([]byte("\033[31mLogin shell not found\033[0m"))
+		_ = w.vt.ObtainScreen().Flush() // NOTE: これいるん？
+		return w
+	}
+
+	c := exec.Command(shell, "--login") // NOTE: ログインシェルの引数くらい実装しててくれ頼む
 	ptmx, err := pty.Start(c)
 	if err != nil {
 		_, _ = w.vt.Write([]byte("\033[31mTTY error\033[0m"))
+		_ = w.vt.ObtainScreen().Flush() // NOTE: これいるん？
 	} else {
 		w.pty = ptmx
 	}
-
-	_ = w.vt.ObtainScreen().Flush()
 
 	return w
 }
