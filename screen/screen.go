@@ -31,7 +31,6 @@ func Start() {
 	screen.EnableMouse()
 	screen.Clear()
 
-	w, h := screen.Size()
 	ecnt := 0
 
 	wm := NewWindowManager(screen)
@@ -46,18 +45,13 @@ func Start() {
 	for {
 		screen.Show()
 		ev := screen.PollEvent()
-		st := tcell.StyleDefault.Background(tcell.ColorRed)
-		w, h = screen.Size()
 
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
 			screen.Sync()
 			screen.Clear()
-			screen.SetContent(w-1, h-1, 'R', nil, st)
 			wm.ForceRender()
 		case *tcell.EventKey:
-			screen.SetContent(w-2, h-2, ev.Rune(), nil, st)
-			screen.SetContent(w-1, h-1, 'K', nil, st)
 			if ev.Key() == tcell.KeyEscape {
 				ecnt++
 				if ecnt > 1 {

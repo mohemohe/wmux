@@ -167,7 +167,11 @@ func (this *Window) render() {
 			runes := cell.Chars()
 			br, bg, bb, _ := cell.Bg().RGBA()
 			fr, fg, fb, _ := cell.Fg().RGBA()
-			style := bodyStyle.Background(tcell.NewRGBColor(int32(br), int32(bg), int32(bb))).Foreground(tcell.NewRGBColor(int32(fr), int32(fg), int32(fb)))
+			attrs := cell.Attrs()
+			style := bodyStyle.
+				Background(tcell.NewRGBColor(int32(br), int32(bg), int32(bb))).
+				Foreground(tcell.NewRGBColor(int32(fr), int32(fg), int32(fb))).
+				Blink(attrs.Blink != 0).Bold(attrs.Bold != 0).Reverse(attrs.Reverse != 0).Underline(attrs.Underline != 0)
 			this.screen.SetContent(x + this.origin.X, y + this.origin.Y + 1, runes[0], runes[1:], style)
 		}
 	}
