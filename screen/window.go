@@ -1,9 +1,14 @@
 package screen
 
 import (
+	"github.com/creack/pty"
 	"github.com/gdamore/tcell"
 	"github.com/mattn/go-libvterm"
 	"github.com/mattn/go-runewidth"
+	"io"
+	"os"
+	"os/exec"
+	"time"
 )
 
 type (
@@ -21,16 +26,18 @@ type (
 		origin Rect
 		size Rect
 		vt *vterm.VTerm
+		pty *os.File
+		requestRender func()
 	}
 )
 
 var (
 	activeTitleBarStyle = tcell.StyleDefault.Background(tcell.ColorTeal).Foreground(tcell.ColorWhite).Bold(true)
 	inactiveTitleBarStyle = tcell.StyleDefault.Background(tcell.ColorDarkSeaGreen).Foreground(tcell.ColorWhite).Bold(false)
-	bodyStyle = tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorWhite).Bold(false)
+	bodyStyle = tcell.StyleDefault.Background(tcell.ColorWhite).Foreground(tcell.ColorBlack).Bold(false)
 )
 
-func NewWindow(screen tcell.Screen) *Window {
+func NewWindow(screen tcell.Screen, requestRender func()) *Window {
 	w := &Window{
 		screen: screen,
 		title: "うんこ",
@@ -40,29 +47,19 @@ func NewWindow(screen tcell.Screen) *Window {
 		origin: Rect{0, 0},
 		size: Rect{80, 24},
 		vt: vterm.New(23, 80),
+		requestRender: requestRender,
 	}
-
 	w.vt.SetUTF8(true)
 	w.vt.ObtainScreen().Reset(true)
-	_, _ = w.vt.Write([]byte("\033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
-	_, _ = w.vt.Write([]byte(" \033[31mhoge \033[32mhuga\033[0m"))
+
+	c := exec.Command("zsh", "-l")
+	ptmx, err := pty.Start(c)
+	if err != nil {
+		_, _ = w.vt.Write([]byte("\033[31mTTY error\033[0m"))
+	} else {
+		w.pty = ptmx
+	}
+
 	_ = w.vt.ObtainScreen().Flush()
 
 	return w
@@ -76,13 +73,34 @@ func (this *Window) SetTitle(title string) {
 
 func (this *Window) Open(isOpen bool) {
 	this.open = isOpen
-	this.active = true
+	this.Active(true)
+
+	go func() {
+		for {
+			buff := make([]byte, 1024)
+			_, err := this.pty.Read(buff)
+			if err != nil{
+				if err == io.EOF {
+					time.Sleep(time.Millisecond)
+					continue
+				}
+			}
+			_, err = this.vt.Write(buff)
+			this.vt.ObtainScreen().Flush()
+			this.requestRender()
+		}
+	}()
+
 }
 
 func (this *Window) Close() {
 	this.open = false
 	this.active = false
 	_ = this.vt.Close()
+
+	if this.pty != nil {
+		_ = this.pty.Close()
+	}
 }
 
 func (this *Window) Active(isActive bool) {
@@ -108,6 +126,10 @@ func (this *Window) IsClickBody(x int, y int) bool {
 	return this.open && this.origin.X <= x && x <= this.origin.X + this.size.X && this.origin.Y + 1 <= y && y < this.origin.Y + this.size.Y
 }
 
+func (this *Window) Input(b []byte) {
+	_ , _ = this.pty.Write(b)
+}
+
 func (this *Window) render() {
 	var titleBarStyle tcell.Style
 	if this.active {
@@ -116,12 +138,12 @@ func (this *Window) render() {
 		titleBarStyle = inactiveTitleBarStyle
 	}
 
-	for x := this.origin.X; x <= this.origin.X + this.size.X; x++ {
+	for x := this.origin.X; x < this.origin.X + this.size.X; x++ {
 		this.screen.SetContent(x, this.origin.Y, ' ', nil, titleBarStyle)
 	}
 	this.drawString(this.origin.X, this.origin.Y, this.title, titleBarStyle)
 
-	for x := this.origin.X; x <= this.origin.X + this.size.X; x++ {
+	for x := this.origin.X; x < this.origin.X + this.size.X; x++ {
 		for y := this.origin.Y + 1; y < this.origin.Y + this.size.Y; y++ {
 			this.screen.SetContent(x, y, ' ', nil, bodyStyle)
 		}
@@ -129,14 +151,11 @@ func (this *Window) render() {
 	vtH, vtW := this.vt.Size()
 	vtS := this.vt.ObtainScreen()
 
-RenderVT:
-		for y := 0; y < vtH; y++ {
-			for x := 0; x < vtW; x++ {
-
-				cell, err := vtS.GetCellAt(y, x)
+	for y := 0; y < vtH; y++ {
+		for x := 0; x < vtW; x++ {
+			cell, err := vtS.GetCellAt(y, x)
 			if err != nil {
-				panic(err)
-				break RenderVT
+				continue
 			}
 			runes := cell.Chars()
 			br, bg, bb, _ := cell.Bg().RGBA()

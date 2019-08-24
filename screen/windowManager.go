@@ -29,7 +29,10 @@ func (this *WindowManager) CreateWindow() *Window {
 		w.Active(false)
 	}
 
-	w := NewWindow(this.screen)
+	w := NewWindow(this.screen, func() {
+		this.ForceRender()
+		_ = this.screen.PostEvent(tcell.NewEventInterrupt(nil)) // HACK: なんかいい感じに更新してくれる
+	})
 	this.windows = append([]*Window{w}, this.windows...)
 	w.Open(true)
 
@@ -78,6 +81,14 @@ func (this *WindowManager) OnLeftMouseUp() {
 	this.isLeftMouseDown = false
 	this.previousMouseLocation.X = -1
 	this.previousMouseLocation.Y = -1
+}
+
+func (this *WindowManager) OnKeyDown(key *tcell.EventKey) {
+	w := this.activeWindow()
+	if w != nil {
+		b := []byte(string(key.Rune()))
+		w.Input(b)
+	}
 }
 
 func (this *WindowManager) changeActiveWindow(x int, y int) bool {

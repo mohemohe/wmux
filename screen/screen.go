@@ -39,6 +39,10 @@ func Start() {
 	wm.CreateWindow().Move(5, 3)
 	wm.CreateWindow().Move(10, 6)
 
+	if err != nil {
+		panic(err)
+	}
+
 	for {
 		screen.Show()
 		ev := screen.PollEvent()
@@ -60,14 +64,8 @@ func Start() {
 					screen.Fini()
 					os.Exit(0)
 				}
-			} else if ev.Key() == tcell.KeyCtrlL {
-				screen.Sync()
-			} else {
-				ecnt = 0
-				if ev.Rune() == 'C' || ev.Rune() == 'c' {
-					screen.Clear()
-				}
 			}
+			wm.OnKeyDown(ev)
 		case *tcell.EventMouse:
 			x, y := ev.Position()
 			button := ev.Buttons()
