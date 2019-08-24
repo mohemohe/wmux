@@ -79,6 +79,8 @@ func Start() {
 			if button != tcell.ButtonNone {
 				wm.OnMouseMove(x, y)
 			}
+		case nil:
+			// NOTE: NOP
 		default:
 			wm.OnLeftMouseUp()
 		}

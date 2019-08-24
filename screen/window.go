@@ -33,6 +33,7 @@ type (
 	}
 	RequestCallback struct {
 		render func()
+		close func(window *Window)
 	}
 )
 
@@ -77,6 +78,10 @@ func NewWindow(screen tcell.Screen, request RequestCallback) *Window {
 	} else {
 		w.pty = ptmx
 	}
+	go func() {
+		_ = c.Wait()
+		w.Close()
+	}()
 
 	return w
 }
@@ -93,6 +98,10 @@ func (this *Window) Open(isOpen bool) {
 
 	go func() {
 		for {
+			if !this.open || this.pty == nil {
+				return
+			}
+
 			buff := make([]byte, 1024)
 			_, err := this.pty.Read(buff)
 			if err != nil{
@@ -110,17 +119,24 @@ func (this *Window) Open(isOpen bool) {
 }
 
 func (this *Window) Close() {
+	defer func() {
+		recover()
+	}()
+
 	this.open = false
 	this.active = false
-	_ = this.vt.Close()
 
 	if this.pty != nil {
+		_ = this.vt.Close()
 		_ = this.pty.Close()
+		this.pty = nil
 	}
 
 	if this.cmd != nil {
 		_ = this.cmd.Process.Kill()
 	}
+
+	this.request.close(this)
 }
 
 func (this *Window) Active(isActive bool) {

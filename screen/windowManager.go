@@ -21,6 +21,7 @@ func NewWindowManager(screen tcell.Screen) *WindowManager {
 		screen: screen,
 		windows: make([]*Window, 0),
 	}
+
 	return wm
 }
 
@@ -38,7 +39,10 @@ func (this *WindowManager) CreateWindow() *Window {
 	w := NewWindow(this.screen, RequestCallback{
 		render: func() {
 			this.ForceRender()
-			_ = this.screen.PostEvent(tcell.NewEventInterrupt(nil)) // HACK: なんかいい感じに更新してくれる
+			this.ForceUpdate()
+		},
+		close: func(window *Window) {
+			this.CloseWindow(window)
 		},
 	})
 	this.windows = append([]*Window{w}, this.windows...)
@@ -47,8 +51,15 @@ func (this *WindowManager) CreateWindow() *Window {
 	return w
 }
 
-func (this *WindowManager) CloseWindow() {
-	// TODO: impl
+func (this *WindowManager) CloseWindow(window *Window) {
+	for i, w := range this.windows {
+		if w == window {
+			this.windows = append(this.windows[:i], this.windows[i+1:]...)
+			break
+		}
+	}
+	this.ForceRender()
+	this.ForceUpdate()
 }
 
 func (this *WindowManager) ForceRender() {
@@ -56,6 +67,11 @@ func (this *WindowManager) ForceRender() {
 	for i := len(this.windows) - 1; i >= 0; i-- {
 		this.windows[i].ForceRender()
 	}
+	this.ForceUpdate()
+}
+
+func (this *WindowManager) ForceUpdate() {
+	_ = this.screen.PostEvent(nil) // HACK: なんかいい感じに更新してくれる
 }
 
 func (this *WindowManager) OnLeftMouseDown(x int, y int) {
