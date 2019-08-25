@@ -46,7 +46,7 @@ var (
 func NewWindow(screen tcell.Screen, request RequestCallback) *Window {
 	w := &Window{
 		screen: screen,
-		title: "うんこ",
+		title: "",
 		open: false,
 		movable: true,
 		resizable: true,
@@ -90,6 +90,14 @@ func (this *Window) SetTitle(title string) {
 	if this.title != title {
 		this.title = title
 	}
+}
+
+func (this *Window) GetTitle() string {
+	return this.title
+}
+
+func (this *Window) GetOrigin() Rect {
+	return this.origin
 }
 
 func (this *Window) Open(isOpen bool) {
