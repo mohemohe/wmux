@@ -3,7 +3,7 @@ windowed terminal multiplexer
 
 **UNSTABLE**
 
-![](https://i.imgur.com/DxkpXCT.gif)
+![](https://i.imgur.com/pCPfONS.gif)
 
 ## Require
 

@@ -107,7 +107,9 @@ func (this *WindowManager) ForceUpdate() {
 func (this *WindowManager) OnLeftMouseDown(x int, y int) {
 	if !this.isLeftMouseDown {
 		if changed := this.changeActiveTask(x, y); !changed {
-			this.changeActiveWindow(x, y)
+			if added := this.addTask(x, y); !added {
+				this.changeActiveWindow(x, y)
+			}
 		}
 		this.previousMouseLocation.X = x
 		this.previousMouseLocation.Y = y
@@ -208,6 +210,20 @@ func (this *WindowManager) changeActiveTask(x int, y int) bool {
 	}
 	this.ForceRender()
 	return changed
+}
+
+func (this *WindowManager) addTask(x int, y int) bool {
+	added := false
+
+	sizeX, sizeY := this.screen.Size()
+	bottom := sizeY - 1
+
+	if y == bottom && sizeX - buttonSize <= x && x < sizeX {
+		this.CreateWindow()
+		added = true
+	}
+	this.ForceRender()
+	return added
 }
 
 func (this *WindowManager) activeWindow() *Window {

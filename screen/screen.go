@@ -34,9 +34,6 @@ func Start() {
 	ecnt := 0
 
 	wm := NewWindowManager(screen)
-	wm.CreateWindow()
-	wm.CreateWindow().Move(5, 3)
-	wm.CreateWindow().Move(10, 6)
 
 	if err != nil {
 		panic(err)
